@@ -1,0 +1,4 @@
+codestat
+*.o
+*.out
+report.txt
