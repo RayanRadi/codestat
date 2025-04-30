@@ -19,4 +19,4 @@ Analyzed: path/to/codebase/utils.h
 Analyzed: path/to/codebase/submodule/parser.c
 </details>
 ✅ Only .c, .h (and soon .java, .py) files are analyzed
-🧠 Output will expand as more features are added (LOC, TODOs, complexity, AI suggestions)
+Output will expand as more features are added (LOC, TODOs, complexity, AI suggestions)
