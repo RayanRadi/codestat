@@ -1,13 +1,20 @@
-# Makefile
-# Builds the codestat executable from all .c files
+# Makefile for codestat
 
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c99
 
-SRC = src/main.c src/scanner.c src/analyzer/analyzer.c
+SRC = src/main.c \
+      src/scanner.c \
+      src/UsrCommands.c \
+      src/analyzer/analyzer.c \
+      src/analyzer/loc.c
 
-codestat: $(SRC)
-	$(CC) $(CFLAGS) -o codestat $(SRC)
+TARGET = codestat
+
+all: $(TARGET)
+
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 clean:
-	rm -f codestat
+	rm -f $(TARGET)

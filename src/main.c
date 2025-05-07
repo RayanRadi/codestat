@@ -1,16 +1,22 @@
-// main.c
-#include <stdio.h>    
-#include "scanner.h"   
+#include <stdio.h>
+#include <stdlib.h>
+#include "UsrCommands.h"
+#include "scanner.h"
+#include "analyzer/analyzer.h"
 
 int main(int argc, char *argv[]) {
-    printf("MAIN is running\n");
-
     if (argc < 2) {
-        printf("No argument provided.\n");
+        fprintf(stderr, "Usage: %s <directory>\n", argv[0]);
         return 1;
     }
 
-    printf("Calling scan_directory on: %s\n", argv[1]);
+    // Auto-scan at startup
     scan_directory(argv[1]);
+    print_total_loc_to_json("report.json");
+    printf("Initial scan complete. JSON written to report.json.\n");
+
+    // Enter interactive mode
+    run_command_interface();
+
     return 0;
 }
