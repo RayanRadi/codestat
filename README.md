@@ -1,5 +1,5 @@
 # codestat
-codestat is a fast, modular command-line tool written in C that recursively scans a codebase and analyzes .c, .h, and (soon) Java and Python files. It provides raw metrics like total lines of code, function counts, and TODOs, with future support for detecting structural issues, code smells, and violations of object-oriented principles like missing polymorphism or poor modularity. Designed to be lightweight yet extensible, codestat will also include an AI-powered Python layer that parses reports and provides intelligent suggestions for improving code quality, maintainability, and design.
+codestat is a fast, modular command-line tool written in C that recursively scans a codebase and analyzes .c, .h, and (soon) Java and Python files. It provides raw metrics like total lines of code, function counts, and TODOs, with future support for detecting structural issues, code smells, and violations of object-oriented principles like missing polymorphism or poor modularity. Designed to be lightweight yet extensible, codestat will also include an AI-powered Python layer that parses reports and provides intelligent suggestions for improving code quality, maintainability, and time complexities of certain files.
 
 ⚙️ Build & Run
 bash
