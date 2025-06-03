@@ -1,51 +1,84 @@
-// function_count.c
-// Detects and counts functions within a C source/header file.
+#define _GNU_SOURCE
+#define _POSIX_C_SOURCE 200809L
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #define MAX_FUNCS 100
 #define MAX_LINE 1024
 
 typedef struct {
     char name[128];
-    char complexity[16];
+    char complexity[64];
 } FunctionInfo;
 
 static int detect_recursion(const char *func_name, const char *body) {
     return strstr(body, func_name) != NULL;
 }
 
-static const char* estimate_complexity(const char *body, const char *func_name) {
-    int for_loops = 0;
-    int nested_loops = 0;
-    int in_loop = 0;
-    int recursion = detect_recursion(func_name, body);
+const char* call_ai_on_function(const char* func_body) {
+    FILE *tmp = fopen("temp_func.txt", "w");
+    if (!tmp) return "AI_ERROR";
+    fprintf(tmp, "%s", func_body);
+    fclose(tmp);
+
+    FILE *fp = popen("python3 ai_complexity.py temp_func.txt", "r");
+    if (!fp) return "AI_ERROR";
+
+    static char result[128];
+    if (fgets(result, sizeof(result), fp) == NULL) {
+        strcpy(result, "AI_ERROR");
+    }
+
+    pclose(fp);
+    result[strcspn(result, "\n")] = 0; // trim newline
+    return result;
+}
+
+const char* estimate_complexity(const char *body, const char *func_name, int *needs_ai) {
+    *needs_ai = 0;
+
+    // If recursion is detected, let AI handle it
+    if (detect_recursion(func_name, body)) {
+        *needs_ai = 1;
+        return NULL;
+    }
+
+    int loop_count = 0;
+    int nested = 0;
+    int brace_level = 0;
 
     const char *p = body;
     while (*p) {
         if (strncmp(p, "for", 3) == 0 || strncmp(p, "while", 5) == 0) {
-            for_loops++;
-            if (in_loop) nested_loops++;
-            in_loop = 1;
+            loop_count++;
+            if (brace_level > 0) nested++;
+        } else if (*p == '{') {
+            brace_level++;
         } else if (*p == '}') {
-            in_loop = 0;
+            if (brace_level > 0) brace_level--;
         }
         p++;
     }
 
-    if (recursion) return "O(2^n)";
-    if (nested_loops >= 1) return "O(n^2)";
-    if (for_loops >= 1) return "O(n)";
-    return "O(1)";
+    if (loop_count == 0) return "O(1)";
+    if (nested > 0) return "O(n^2)";
+    if (loop_count == 1) return "O(n)";
+
+    *needs_ai = 1;
+    return NULL;
 }
 
-void analyze_file_complexity(const char *filepath) {
+static char worst_complexity[64] = "O(1)";
+
+const char* get_worst_complexity(const char *filepath) {
     FILE *f = fopen(filepath, "r");
     if (!f) {
         perror("fopen");
-        return;
+        return "ERROR";
     }
 
     char line[MAX_LINE];
@@ -54,12 +87,10 @@ void analyze_file_complexity(const char *filepath) {
     int func_count = 0;
     int recording = 0;
     int brace_count = 0;
-
     char current_func[128] = "";
 
     while (fgets(line, sizeof(line), f)) {
         if (!recording) {
-            // crude function detection
             if (strstr(line, "(") && strstr(line, ")") && strchr(line, '{')) {
                 sscanf(line, "%127s", current_func);
                 recording = 1;
@@ -70,35 +101,45 @@ void analyze_file_complexity(const char *filepath) {
             strcat(func_body, line);
             for (int i = 0; line[i]; i++) {
                 if (line[i] == '{') brace_count++;
-                else if (line[i] == '}') brace_count--;
+                if (line[i] == '}') brace_count--;
             }
 
             if (brace_count == 0) {
-                // End of function body
+                int needs_ai = 0;
+                const char *result = estimate_complexity(func_body, current_func, &needs_ai);
+                if (needs_ai) {
+                    result = call_ai_on_function(func_body);
+                }
+
                 strcpy(functions[func_count].name, current_func);
-                strcpy(functions[func_count].complexity, estimate_complexity(func_body, current_func));
+                strcpy(functions[func_count].complexity, result);
                 func_count++;
-                recording = 0;
+
                 func_body[0] = '\0';
+                recording = 0;
             }
         }
     }
 
     fclose(f);
 
-    // Determine worst-case
-    const char *ranking[] = { "O(1)", "O(n)", "O(n^2)", "O(2^n)" };
+    // Determine worst
+    const char *ranking[] = {"O(1)", "O(n)", "O(n^2)", "O(2^n)", "AI_ERROR"};
     int worst_rank = 0;
-
     for (int i = 0; i < func_count; i++) {
-        int rank = 0;
-        while (rank < 4 && strcmp(functions[i].complexity, ranking[rank]) != 0) rank++;
-        if (rank > worst_rank) worst_rank = rank;
+        for (int r = 0; r < 5; r++) {
+            if (strcmp(functions[i].complexity, ranking[r]) == 0 && r > worst_rank) {
+                worst_rank = r;
+            }
+        }
     }
 
+    strcpy(worst_complexity, ranking[worst_rank]);
+    return worst_complexity;
+}
+
+void analyze_file_complexity(const char *filepath) {
+    get_worst_complexity(filepath); // populate static var
     printf("File: %s\n", filepath);
-    for (int i = 0; i < func_count; i++) {
-        printf("  Function: %s - Complexity: %s\n", functions[i].name, functions[i].complexity);
-    }
-    printf("  >> Worst-case in file: %s\n\n", ranking[worst_rank]);
+    printf("  Worst Time Complexity: %s\n", worst_complexity);
 }

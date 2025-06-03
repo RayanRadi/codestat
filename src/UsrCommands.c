@@ -6,6 +6,9 @@
 #include <sys/stat.h>
 #include "scanner.h"
 #include "analyzer/analyzer.h"
+#include "analyzer/complexity.h"
+#include "analyzer/loc.h"
+#include "analyzer/function_count.h"
 
 static void to_lowercase(char *str) {
     for (int i = 0; str[i]; i++) str[i] = tolower((unsigned char)str[i]);
@@ -28,7 +31,6 @@ static int find_and_analyze_file(const char *start_dir, const char *target_name)
         if (stat(path, &statbuf) == -1) continue;
 
         if (S_ISDIR(statbuf.st_mode)) {
-            // Only recurse if it's a Test-Subject dir or we're inside one already
             if (strstr(entry->d_name, "Test-Subject") || strstr(start_dir, "Test-Subject")) {
                 if (find_and_analyze_file(path, target_name)) {
                     closedir(dir);
@@ -39,14 +41,21 @@ static int find_and_analyze_file(const char *start_dir, const char *target_name)
             }
         } else if (S_ISREG(statbuf.st_mode)) {
             if (strcmp(entry->d_name, target_name) == 0) {
-                AnalysisResult result = {0};
-                analyze_file(path, &result);
+                LOCResult result = count_loc(path);
+                const char* worst = get_worst_complexity(path);
+                int function_count = count_functions(path);
+                const char* blast_label = get_blast_radius_label(function_count);
+
                 printf("{\n");
                 printf("  \"file\": \"%s\",\n", path);
                 printf("  \"total_lines\": %d,\n", result.total_lines);
                 printf("  \"code_lines\": %d,\n", result.code_lines);
-                printf("  \"blank_lines\": %d\n", result.blank_lines);
+                printf("  \"blank_lines\": %d,\n", result.blank_lines);
+                printf("  \"functions\": %d,\n", function_count);
+                printf("  \"blast_radius\": \"%s\",\n", blast_label);
+                printf("  \"worst_complexity\": \"%s\"\n", worst);
                 printf("}\n");
+
                 closedir(dir);
                 return 1;
             }

@@ -2,7 +2,8 @@
 #include <string.h>
 #include "analyzer.h"
 #include "loc.h"
-#include "complexity.h"  
+#include "complexity.h"
+#include "function_count.h"
 
 static int total_loc = 0;
 static int files_scanned = 0;
@@ -14,14 +15,12 @@ void analyze_file(const char *filepath, AnalysisResult *result) {
     result->code_lines = loc.code_lines;
     result->blank_lines = loc.blank_lines;
 
-    const char* worst_complexity = get_worst_complexity(filepath);  // ← FIXED: define it before use
+    int function_count = count_functions(filepath);
+    const char *blast_risk = get_blast_radius_label(function_count);
+    const char *complexity = get_worst_complexity(filepath);
 
     if (!json_out) {
         json_out = fopen("report.json", "w");
-        if (!json_out) {
-            perror("fopen report.json");
-            return;
-        }
         fprintf(json_out, "[\n");
     }
 
@@ -34,9 +33,12 @@ void analyze_file(const char *filepath, AnalysisResult *result) {
         "    \"total_lines\": %d,\n"
         "    \"code_lines\": %d,\n"
         "    \"blank_lines\": %d,\n"
+        "    \"functions\": %d,\n"
+        "    \"blast_radius\": \"%s\",\n"
         "    \"worst_complexity\": \"%s\"\n"
         "  }",
-        filepath, loc.total_lines, loc.code_lines, loc.blank_lines, worst_complexity
+        filepath, loc.total_lines, loc.code_lines, loc.blank_lines,
+        function_count, blast_risk, complexity
     );
 
     total_loc += loc.total_lines;
@@ -44,6 +46,7 @@ void analyze_file(const char *filepath, AnalysisResult *result) {
 }
 
 void print_total_loc_to_json(const char *summary_path) {
+    (void)summary_path; // unused for now
     if (json_out) {
         fprintf(json_out, ",\n  {\n");
         fprintf(json_out,
@@ -51,7 +54,9 @@ void print_total_loc_to_json(const char *summary_path) {
             "      \"total_loc\": %d,\n"
             "      \"files_scanned\": %d\n"
             "    }\n"
-            "  }\n");
+            "  }\n",
+            total_loc, files_scanned
+        );
         fprintf(json_out, "]\n");
         fclose(json_out);
         json_out = NULL;

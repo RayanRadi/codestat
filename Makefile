@@ -7,7 +7,9 @@ SRC = src/main.c \
       src/scanner.c \
       src/UsrCommands.c \
       src/analyzer/analyzer.c \
-      src/analyzer/loc.c
+      src/analyzer/loc.c \
+      src/analyzer/complexity.c \
+      src/analyzer/function_count.c
 
 TARGET = codestat
 
@@ -17,4 +19,4 @@ $(TARGET): $(SRC)
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRC)
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) temp_func.txt report.json
